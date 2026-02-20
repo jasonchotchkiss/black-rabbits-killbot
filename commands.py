@@ -93,9 +93,10 @@ def register_commands(bot):
         embed.add_field(
             name="How often is data updated?",
             value=(
-                "Kill data is synced daily at **11:00 UTC**, aligned to EVE Online downtime. "
-                "The bot fetches the latest kills from zKillboard and ESI, "
-                "stores them locally, and posts an updated summary to this channel."
+                "Kill data is synced **every 4 hours** (03:00, 07:00, 11:00, 15:00, 19:00, 23:00 UTC), "
+                "so `/top10` always reflects recent activity.\\n"
+                "A full kill report is posted to this channel daily at **11:15 UTC**, "
+                "after EVE Online downtime."
             ),
             inline=False,
         )
