@@ -94,7 +94,7 @@ def register_commands(bot):
             name="How often is data updated?",
             value=(
                 "Kill data is synced **every 4 hours** (03:00, 07:00, 11:00, 15:00, 19:00, 23:00 UTC), "
-                "so `/top10` always reflects recent activity.\\n"
+                "so `/top10` always reflects recent activity.\n"
                 "A full kill report is posted to this channel daily at **11:15 UTC**, "
                 "after EVE Online downtime."
             ),
