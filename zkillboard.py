@@ -12,6 +12,7 @@ ALLIANCE_ID = 99012611
 
 # Both APIs require a descriptive User-Agent header
 USER_AGENT = "BlackRabbitsKillbot/1.0 (Discord bot; github.com/jasonchotchkiss)"
+CAPSULE_TYPE_IDS = {670, 33328}
 
 
 async def fetch_zkill_page(session: aiohttp.ClientSession, page: int = 1) -> list:
@@ -85,6 +86,7 @@ def extract_kill_data(zkb_entry: dict, esi_killmail: dict) -> dict | None:
     kill_time = esi_killmail.get("killmail_time")   # e.g. "2024-01-15T12:34:56Z"
     victim    = esi_killmail.get("victim", {})
     attackers = esi_killmail.get("attackers", [])
+    if victim.get("ship_type_id") in CAPSULE_TYPE_IDS: return None
 
     # Find the attacker who landed the final blow
     final_blow_attacker = next(
