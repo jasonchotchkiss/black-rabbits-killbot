@@ -49,18 +49,12 @@ class BlackRabbitsBot(discord.Client):
         self.scheduler = AsyncIOScheduler(timezone="UTC")
 
     async def setup_hook(self):
-        # Initialize database on startup
         init_db()
-
-        # Register all slash commands
         register_commands(self)
-
-        # Sync commands to dev guild
         self.tree.copy_global_to(guild=DEV_GUILD)
         await self.tree.sync(guild=DEV_GUILD)
 
         # Job 1: Daily kill sync + post to Discord at 11:15 UTC
-        # (EVE downtime is 11:00–11:10 UTC, so 11:15 is safely after)
         self.scheduler.add_job(
             self._daily_post,
             CronTrigger(hour=11, minute=15, timezone="UTC"),
@@ -69,8 +63,6 @@ class BlackRabbitsBot(discord.Client):
         )
 
         # Job 2: Background sync every 4 hours — keeps DB fresh for /top10
-        # Runs at 03:00, 07:00, 11:00 (before daily post), 15:00, 19:00, 23:00 UTC
-        # Silently pulls new kills into the DB without posting to Discord
         self.scheduler.add_job(
             self._background_sync,
             CronTrigger(hour="3,7,11,15,19,23", minute=0, timezone="UTC"),
@@ -80,6 +72,12 @@ class BlackRabbitsBot(discord.Client):
 
         self.scheduler.start()
         print("Scheduler started — daily post at 11:15 UTC, background sync every 4 hours.")
+
+    async def on_ready(self):
+        print(f"Logged in as {self.user} (ID: {self.user.id})")
+        print(f"Watching guild ID : {GUILD_ID}")
+        print(f"Posting channel ID: {CHANNEL_ID}")
+        print("Bot is ready and slash commands are synced.")
 
     async def _daily_post(self):
         """
@@ -94,7 +92,6 @@ class BlackRabbitsBot(discord.Client):
             print(f"[scheduler] ERROR: Could not find channel ID {CHANNEL_ID}. Aborting.")
             return
 
-        # Step 1: sync fresh kill data
         try:
             await sync_kills(max_pages=5)
             print("[scheduler] Kill sync complete.")
@@ -103,48 +100,44 @@ class BlackRabbitsBot(discord.Client):
             await channel.send(f"⚠️ Daily kill sync encountered an error: `{e}`")
             return
 
-        # Step 2: build the embed from fresh DB data
-        now   = datetime.now(timezone.utc)
-        month = now.strftime("%B %Y")
+        now       = datetime.now(timezone.utc)
+        month     = now.strftime("%B %Y")
         week_start = _get_monday_label(now)
 
-        ytd   = get_year_to_date_top10()
+        ytd       = get_year_to_date_top10()
         month_top = get_current_month_top10()
-        week  = get_current_week_top10()
+        week      = get_current_week_top10()
 
         embed = discord.Embed(
-            title     = "⚔️  Black Rabbits — Daily Kill Report",
+            title       = "⚔️  Black Rabbits — Daily Kill Report",
             description = f"Updated <t:{int(now.timestamp())}:F>",
-            color     = discord.Color.red(),
-        )
-
-        embed.add_field(
-            name  = f"📅 Year to Date ({now.year})",
-            value = format_top10_embed_text("YTD", ytd),
-            inline= False,
+            color       = discord.Color.red(),
         )
         embed.add_field(
-            name  = f"🗓️ Current Month ({month})",
-            value = format_top10_embed_text("Month", month_top),
-            inline= False,
+            name   = f"📅 Year to Date ({now.year})",
+            value  = format_top10_embed_text("YTD", ytd),
+            inline = False,
         )
         embed.add_field(
-            name  = f"📆 Current Week ({week_start})",
-            value = format_top10_embed_text("Week", week),
-            inline= False,
+            name   = f"🗓️ Current Month ({month})",
+            value  = format_top10_embed_text("Month", month_top),
+            inline = False,
         )
-
+        embed.add_field(
+            name   = f"📆 Current Week ({week_start})",
+            value  = format_top10_embed_text("Week", week),
+            inline = False,
+        )
         embed.set_footer(text="Data: zKillboard + ESI  •  Updates daily at 11:15 UTC after EVE downtime")
 
-        # Step 3: post to channel
         await channel.send(embed=embed)
         print(f"[scheduler] Daily post sent to channel {CHANNEL_ID}.")
 
-        async def _background_sync(self):
-            """
-            Runs every 4 hours — silently syncs new kills into the DB.
-            No Discord post. Keeps /top10 results fresh between daily posts.
-            """
+    async def _background_sync(self):
+        """
+        Runs every 4 hours — silently syncs new kills into the DB.
+        No Discord post. Keeps /top10 results fresh between daily posts.
+        """
         print(f"[scheduler] Background sync started at {datetime.now(timezone.utc).isoformat()}")
         try:
             await sync_kills(max_pages=3)
@@ -153,9 +146,8 @@ class BlackRabbitsBot(discord.Client):
             print(f"[scheduler] Background sync failed: {e}")
 
 
-
 def _get_monday_label(now: datetime) -> str:
-    """Returns a 'Mon DD Mon' label for the start of the current week."""
+    """Returns a 'D Mon' label for the start of the current week."""
     from datetime import timedelta
     days_since_monday = now.weekday()
     monday = now - timedelta(days=days_since_monday)
