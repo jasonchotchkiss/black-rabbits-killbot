@@ -59,7 +59,7 @@ class BlackRabbitsBot(discord.Client):
         self.tree.copy_global_to(guild=DEV_GUILD)
         await self.tree.sync(guild=DEV_GUILD)
 
-        # Schedule the daily kill sync + post at 11:15 UTC
+        # Job 1: Daily kill sync + post to Discord at 11:15 UTC
         # (EVE downtime is 11:00–11:10 UTC, so 11:15 is safely after)
         self.scheduler.add_job(
             self._daily_post,
@@ -67,14 +67,19 @@ class BlackRabbitsBot(discord.Client):
             id="daily_post",
             replace_existing=True,
         )
-        self.scheduler.start()
-        print("Scheduler started — daily post scheduled for 11:15 UTC.")
 
-    async def on_ready(self):
-        print(f"Logged in as {self.user} (ID: {self.user.id})")
-        print(f"Watching guild ID : {GUILD_ID}")
-        print(f"Posting channel ID: {CHANNEL_ID}")
-        print("Bot is ready and slash commands are synced.")
+        # Job 2: Background sync every 4 hours — keeps DB fresh for /top10
+        # Runs at 03:00, 07:00, 11:00 (before daily post), 15:00, 19:00, 23:00 UTC
+        # Silently pulls new kills into the DB without posting to Discord
+        self.scheduler.add_job(
+            self._background_sync,
+            CronTrigger(hour="3,7,11,15,19,23", minute=0, timezone="UTC"),
+            id="background_sync",
+            replace_existing=True,
+        )
+
+        self.scheduler.start()
+        print("Scheduler started — daily post at 11:15 UTC, background sync every 4 hours.")
 
     async def _daily_post(self):
         """
@@ -134,6 +139,19 @@ class BlackRabbitsBot(discord.Client):
         # Step 3: post to channel
         await channel.send(embed=embed)
         print(f"[scheduler] Daily post sent to channel {CHANNEL_ID}.")
+
+        async def _background_sync(self):
+            """
+            Runs every 4 hours — silently syncs new kills into the DB.
+            No Discord post. Keeps /top10 results fresh between daily posts.
+            """
+        print(f"[scheduler] Background sync started at {datetime.now(timezone.utc).isoformat()}")
+        try:
+            await sync_kills(max_pages=3)
+            print("[scheduler] Background sync complete.")
+        except Exception as e:
+            print(f"[scheduler] Background sync failed: {e}")
+
 
 
 def _get_monday_label(now: datetime) -> str:
