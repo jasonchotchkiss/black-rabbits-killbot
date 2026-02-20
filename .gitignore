@@ -10,3 +10,6 @@ __pycache__/
 .env
 .env.dev
 .env.prod
+
+# Runtime data
+killboard.db
