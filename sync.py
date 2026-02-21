@@ -1,6 +1,7 @@
 import asyncio
 from zkillboard import fetch_and_extract_kills
 from database import init_db, save_kill, get_kill_count
+from resolve_names import run_backfill
 
 
 async def sync_kills(max_pages: int = 5):
@@ -32,6 +33,12 @@ async def sync_kills(max_pages: int = 5):
 
     print(f"Kills in database after sync : {count_after}")
     print(f"New kills added              : {new_kills}")
+
+    # Resolve any new corp/alliance names that appeared in this sync
+    if new_kills > 0:
+        print("Resolving new corp/alliance names...")
+        await run_backfill()
+
     print("=== Sync complete ===")
 
 
