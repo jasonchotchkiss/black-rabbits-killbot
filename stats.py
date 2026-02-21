@@ -80,6 +80,78 @@ def _query_top10(start_iso: str, end_iso: str) -> list[dict]:
     return results
 
 
+def get_kills_against_character(victim_name: str) -> list[dict]:
+    """
+    Returns the top 10 Black Rabbits pilots by kill count
+    against a victim whose name contains the given string (case-insensitive LIKE match).
+    """
+    return _query_kills_against(
+        "victim_name LIKE ? AND final_blow_id != 0",
+        (f"%{victim_name}%",)
+    )
+
+
+def get_kills_against_corp(corp_id: int) -> list[dict]:
+    """
+    Returns the top 10 Black Rabbits pilots by kill count
+    against victims from a specific corporation (matched by corporation ID).
+    """
+    return _query_kills_against(
+        "victim_corp = ? AND final_blow_id != 0",
+        (str(corp_id),)
+    )
+
+
+def get_kills_against_alliance(alliance_id: int) -> list[dict]:
+    """
+    Returns the top 10 Black Rabbits pilots by kill count
+    against victims from a specific alliance (matched by alliance ID).
+    """
+    return _query_kills_against(
+        "victim_alliance_id = ? AND final_blow_id != 0",
+        (alliance_id,)
+    )
+
+
+def _query_kills_against(where_clause: str, params: tuple) -> list[dict]:
+    """
+    Internal helper: returns top 10 Black Rabbits pilots by kill count
+    against victims matching the provided WHERE clause.
+
+    `where_clause` is always set by internal code, never by user input.
+    User-supplied values are passed safely through `params` (parameterized).
+    """
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute(f"""
+        SELECT
+            final_blow_name,
+            final_blow_id,
+            COUNT(*) as kill_count
+        FROM kills
+        WHERE {where_clause}
+        GROUP BY final_blow_id, final_blow_name
+        ORDER BY kill_count DESC
+        LIMIT 10
+    """, params)
+
+    rows = cursor.fetchall()
+    conn.close()
+
+    results = []
+    for rank, (name, char_id, count) in enumerate(rows, start=1):
+        results.append({
+            "rank":       rank,
+            "pilot_name": name,
+            "char_id":    char_id,
+            "kills":      count,
+            "zkb_url":    f"https://zkillboard.com/character/{char_id}/",
+        })
+
+    return results
+
+
 def format_top10_embed_text(title: str, results: list[dict]) -> str:
     """
     Formats a top 10 list into a clean text block for Discord.
@@ -89,13 +161,13 @@ def format_top10_embed_text(title: str, results: list[dict]) -> str:
         return "No kills recorded for this period."
 
     lines = []
-    medals = {1: "🥇", 2: "🥈", 3: "🥉"}
+    medals = {1: "\U0001f947", 2: "\U0001f948", 3: "\U0001f949"}
 
     for entry in results:
         rank   = entry["rank"]
         name   = entry["pilot_name"]
         kills  = entry["kills"]
         medal  = medals.get(rank, f"`#{rank}`")
-        lines.append(f"{medal} **{name}** — {kills} final blow{'s' if kills != 1 else ''}")
+        lines.append(f"{medal} **{name}** \u2014 {kills} final blow{'s' if kills != 1 else ''}")
 
     return "\n".join(lines)

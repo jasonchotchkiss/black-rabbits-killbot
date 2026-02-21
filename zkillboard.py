@@ -55,6 +55,7 @@ async def fetch_esi_killmail(
             print(f"ESI error: HTTP {response.status} for kill {killmail_id}")
             return None
 
+
 async def resolve_character_name(
     session: aiohttp.ClientSession,
     character_id: int
@@ -76,17 +77,56 @@ async def resolve_character_name(
         else:
             return "Unknown Pilot"
 
+
+async def resolve_entity_name(name: str) -> tuple[str, int] | None:
+    """
+    Use ESI /universe/ids/ to resolve a name string to an entity type and ID.
+    Returns ("character", id), ("corporation", id), or ("alliance", id).
+    Returns None if the name is not found or on any error.
+
+    Note: ESI requires an exact match — partial names will return nothing.
+    """
+    url = f"{ESI_BASE}/universe/ids/?datasource=tranquility"
+    headers = {
+        "User-Agent": USER_AGENT,
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+    }
+
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.post(url, json=[name], headers=headers) as response:
+                if response.status != 200:
+                    return None
+                data = await response.json(content_type=None)
+
+                if data.get("characters"):
+                    return ("character", data["characters"][0]["id"])
+                elif data.get("corporations"):
+                    return ("corporation", data["corporations"][0]["id"])
+                elif data.get("alliances"):
+                    return ("alliance", data["alliances"][0]["id"])
+                else:
+                    return None
+    except Exception as e:
+        print(f"ESI resolve_entity_name error for '{name}': {e}")
+        return None
+
+
 def extract_kill_data(zkb_entry: dict, esi_killmail: dict) -> dict | None:
     """
     Combine zKillboard metadata and ESI killmail data into a clean dict
     ready to be saved to the database.
-    Returns None if no valid final blow attacker is found.
+    Returns None if the victim is a capsule (pod) or no final blow attacker found.
     """
     kill_id   = esi_killmail.get("killmail_id")
     kill_time = esi_killmail.get("killmail_time")   # e.g. "2024-01-15T12:34:56Z"
     victim    = esi_killmail.get("victim", {})
     attackers = esi_killmail.get("attackers", [])
-    if victim.get("ship_type_id") in CAPSULE_TYPE_IDS: return None
+
+    # Skip pod kills
+    if victim.get("ship_type_id") in CAPSULE_TYPE_IDS:
+        return None
 
     # Find the attacker who landed the final blow
     final_blow_attacker = next(
@@ -102,15 +142,16 @@ def extract_kill_data(zkb_entry: dict, esi_killmail: dict) -> dict | None:
     final_blow_name = final_blow_attacker.get("character_name", "Unknown Pilot")
 
     return {
-        "kill_id":         kill_id,
-        "kill_time":       kill_time,
-        "final_blow_id":   final_blow_id,
-        "final_blow_name": final_blow_name,
-        "ship_type_id":    victim.get("ship_type_id"),
-        "victim_name":     victim.get("character_name", "Unknown"),
-        "victim_corp":     str(victim.get("corporation_id", "")),
-        "solar_system_id": esi_killmail.get("solar_system_id"),
-        "zkb_url":         f"https://zkillboard.com/kill/{kill_id}/",
+        "kill_id":            kill_id,
+        "kill_time":          kill_time,
+        "final_blow_id":      final_blow_id,
+        "final_blow_name":    final_blow_name,
+        "ship_type_id":       victim.get("ship_type_id"),
+        "victim_name":        victim.get("character_name", "Unknown"),
+        "victim_corp":        str(victim.get("corporation_id", "")),
+        "victim_alliance_id": victim.get("alliance_id", 0),
+        "solar_system_id":    esi_killmail.get("solar_system_id"),
+        "zkb_url":            f"https://zkillboard.com/kill/{kill_id}/",
     }
 
 

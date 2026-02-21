@@ -5,7 +5,11 @@ from stats import (
     get_current_month_top10,
     get_current_week_top10,
     format_top10_embed_text,
+    get_kills_against_character,
+    get_kills_against_corp,
+    get_kills_against_alliance,
 )
+from zkillboard import resolve_entity_name
 
 
 def register_commands(bot):
@@ -36,7 +40,7 @@ def register_commands(bot):
         week  = get_current_week_top10()
 
         embed = discord.Embed(
-            title="Black Rabbits — Top 10 Final Blows",
+            title="Black Rabbits \u2014 Top 10 Final Blows",
             color=discord.Color.red(),
         )
 
@@ -51,12 +55,12 @@ def register_commands(bot):
             inline=False,
         )
         embed.add_field(
-            name="Current Week (Mon–Sun)",
+            name="Current Week (Mon\u2013Sun)",
             value=format_top10_embed_text("Week", week),
             inline=False,
         )
 
-        embed.set_footer(text="Data sourced from zKillboard • Updates daily at EVE downtime (11:00 UTC)")
+        embed.set_footer(text="Data sourced from zKillboard \u2022 Updates daily at EVE downtime (11:00 UTC)")
 
         await interaction.followup.send(embed=embed)
 
@@ -66,7 +70,7 @@ def register_commands(bot):
     )
     async def info(interaction: discord.Interaction):
         embed = discord.Embed(
-            title="Black Rabbits Killbot — Info",
+            title="Black Rabbits Killbot \u2014 Info",
             description="Tracks kill statistics for the Black Rabbits alliance in EVE Online.",
             color=discord.Color.dark_grey(),
         )
@@ -83,9 +87,9 @@ def register_commands(bot):
         embed.add_field(
             name="Lists available",
             value=(
-                "**Year to Date** — Jan 1 to today (calendar year)\n"
-                "**Current Month** — 1st of this month to today\n"
-                "**Current Week** — Monday 00:00 UTC to today (resets each Monday)"
+                "**Year to Date** \u2014 Jan 1 to today (calendar year)\n"
+                "**Current Month** \u2014 1st of this month to today\n"
+                "**Current Week** \u2014 Monday 00:00 UTC to today (resets each Monday)"
             ),
             inline=False,
         )
@@ -104,13 +108,72 @@ def register_commands(bot):
         embed.add_field(
             name="Commands",
             value=(
-                "`/top10` — Show all three leaderboards\n"
-                "`/info` — Show this help message\n"
-                "`/ping` — Check if the bot is online"
+                "`/top10` \u2014 Show all three leaderboards\n"
+                "`/killsagainst <target>` \u2014 Top 10 BR pilots who killed a specific pilot, corp, or alliance\n"
+                "`/info` \u2014 Show this help message\n"
+                "`/ping` \u2014 Check if the bot is online"
             ),
             inline=False,
         )
 
-        embed.set_footer(text="Black Rabbits Killbot • Alliance ID: 99012611")
+        embed.set_footer(text="Black Rabbits Killbot \u2022 Alliance ID: 99012611")
 
         await interaction.response.send_message(embed=embed)
+
+    @bot.tree.command(
+        name="killsagainst",
+        description="Top 10 Black Rabbits pilots who killed a specific pilot, corp, or alliance."
+    )
+    @app_commands.describe(target="Pilot name, corporation name, or alliance name to look up")
+    async def killsagainst(interaction: discord.Interaction, target: str):
+        await interaction.response.defer()
+
+        # Try to resolve the name to a known EVE entity type via ESI.
+        # ESI /universe/ids/ requires an exact name match.
+        entity = await resolve_entity_name(target)
+
+        if entity is None:
+            # ESI couldn't resolve the name — fall back to a fuzzy character name search.
+            results = get_kills_against_character(target)
+            entity_label = f'pilot matching "{target}"'
+        else:
+            entity_type, entity_id = entity
+            if entity_type == "character":
+                # We store victim_name as text, so search by name string.
+                results = get_kills_against_character(target)
+                entity_label = f"**{target}**"
+            elif entity_type == "corporation":
+                results = get_kills_against_corp(entity_id)
+                entity_label = f"**{target}** (corporation)"
+            elif entity_type == "alliance":
+                results = get_kills_against_alliance(entity_id)
+                entity_label = f"**{target}** (alliance)"
+            else:
+                results = get_kills_against_character(target)
+                entity_label = f'"{target}"'
+
+        embed = discord.Embed(
+            title=f"Kills Against \u2014 {target}",
+            color=discord.Color.red(),
+        )
+
+        if not results:
+            embed.description = f"No kills found against {entity_label}."
+        else:
+            medals = {1: "\U0001f947", 2: "\U0001f948", 3: "\U0001f949"}
+            lines = []
+            for entry in results:
+                rank  = entry["rank"]
+                name  = entry["pilot_name"]
+                kills = entry["kills"]
+                medal = medals.get(rank, f"`#{rank}`")
+                lines.append(f"{medal} **{name}** \u2014 {kills} kill{'s' if kills != 1 else ''}")
+
+            embed.add_field(
+                name=f"Top BR Pilots vs {entity_label}",
+                value="\n".join(lines),
+                inline=False,
+            )
+
+        embed.set_footer(text="Data sourced from zKillboard")
+        await interaction.followup.send(embed=embed)

@@ -13,6 +13,7 @@ def get_connection():
 def init_db():
     """
     Create the kills table if it does not already exist.
+    Also applies any pending schema migrations.
     This is safe to call every time the bot starts.
     """
     conn = get_connection()
@@ -20,17 +21,27 @@ def init_db():
 
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS kills (
-            kill_id         INTEGER PRIMARY KEY,
-            kill_time       TEXT NOT NULL,
-            final_blow_name TEXT NOT NULL,
-            final_blow_id   INTEGER NOT NULL,
-            ship_type_id    INTEGER,
-            victim_name     TEXT,
-            victim_corp     TEXT,
-            solar_system_id INTEGER,
-            zkb_url         TEXT
+            kill_id             INTEGER PRIMARY KEY,
+            kill_time           TEXT NOT NULL,
+            final_blow_name     TEXT NOT NULL,
+            final_blow_id       INTEGER NOT NULL,
+            ship_type_id        INTEGER,
+            victim_name         TEXT,
+            victim_corp         TEXT,
+            victim_alliance_id  INTEGER DEFAULT 0,
+            solar_system_id     INTEGER,
+            zkb_url             TEXT
         )
     """)
+
+    # Migration: add victim_alliance_id to databases that predate this column.
+    # ALTER TABLE fails silently if the column already exists.
+    try:
+        cursor.execute("ALTER TABLE kills ADD COLUMN victim_alliance_id INTEGER DEFAULT 0")
+        conn.commit()
+        print("Migration applied: added victim_alliance_id column.")
+    except sqlite3.OperationalError:
+        pass  # Column already exists — safe to ignore
 
     conn.commit()
     conn.close()
@@ -54,9 +65,10 @@ def save_kill(kill_data: dict):
             ship_type_id,
             victim_name,
             victim_corp,
+            victim_alliance_id,
             solar_system_id,
             zkb_url
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     """, (
         kill_data["kill_id"],
         kill_data["kill_time"],
@@ -65,6 +77,7 @@ def save_kill(kill_data: dict):
         kill_data.get("ship_type_id"),
         kill_data.get("victim_name"),
         kill_data.get("victim_corp"),
+        kill_data.get("victim_alliance_id", 0),
         kill_data.get("solar_system_id"),
         kill_data.get("zkb_url"),
     ))
