@@ -171,3 +171,86 @@ def format_top10_embed_text(title: str, results: list[dict]) -> str:
         lines.append(f"{medal} **{name}** \u2014 {kills} final blow{'s' if kills != 1 else ''}")
 
     return "\n".join(lines)
+
+def search_character_victims(partial: str) -> list[dict]:
+    """
+    Returns up to 25 distinct victim names from kills
+    that contain the partial string (case-insensitive).
+    Ordered by how many times that victim appears (most killed first).
+    """
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT
+            victim_name,
+            COUNT(*) as kill_count
+        FROM kills
+        WHERE victim_name LIKE ?
+          AND victim_name IS NOT NULL
+          AND victim_name != ''
+          AND victim_name != 'Unknown'
+        GROUP BY victim_name
+        ORDER BY kill_count DESC
+        LIMIT 25
+    """, (f"%{partial}%",))
+
+    rows = cursor.fetchall()
+    conn.close()
+
+    return [
+        {"name": row[0], "type": "character", "count": row[1]}
+        for row in rows
+    ]
+
+
+def search_corporations(partial: str) -> list[dict]:
+    """
+    Returns up to 25 corporations whose name or ticker
+    contains the partial string (case-insensitive).
+    """
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT corp_id, corp_name, ticker
+        FROM corporations
+        WHERE corp_name LIKE ?
+           OR ticker LIKE ?
+        ORDER BY corp_name ASC
+        LIMIT 25
+    """, (f"%{partial}%", f"%{partial}%"))
+
+    rows = cursor.fetchall()
+    conn.close()
+
+    return [
+        {"id": row[0], "name": row[1], "ticker": row[2], "type": "corporation"}
+        for row in rows
+    ]
+
+
+def search_alliances(partial: str) -> list[dict]:
+    """
+    Returns up to 25 alliances whose name or ticker
+    contains the partial string (case-insensitive).
+    """
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT alliance_id, alliance_name, ticker
+        FROM alliances
+        WHERE alliance_name LIKE ?
+           OR ticker LIKE ?
+        ORDER BY alliance_name ASC
+        LIMIT 25
+    """, (f"%{partial}%", f"%{partial}%"))
+
+    rows = cursor.fetchall()
+    conn.close()
+
+    return [
+        {"id": row[0], "name": row[1], "ticker": row[2], "type": "alliance"}
+        for row in rows
+    ]
