@@ -140,7 +140,7 @@ def upsert_alliance(alliance_id: int, alliance_name: str, ticker: str = ""):
     conn.close()
 
 
-def get_missing_corp_ids(limit: int = 500) -> list[int]:
+def get_missing_corp_ids(limit: int = 1500) -> list[int]:
     """
     Corp IDs that appear in kills.victim_corp but are not yet in corporations.
     victim_corp is stored as TEXT today, so we CAST it to INTEGER.
@@ -161,7 +161,7 @@ def get_missing_corp_ids(limit: int = 500) -> list[int]:
     return [r[0] for r in rows if r[0] is not None]
 
 
-def get_missing_alliance_ids(limit: int = 500) -> list[int]:
+def get_missing_alliance_ids(limit: int = 1000) -> list[int]:
     """
     Alliance IDs that appear in kills.victim_alliance_id but are not yet in alliances.
     """
