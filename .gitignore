@@ -15,6 +15,7 @@ __pycache__/
 killboard.db
 
 # My Notes
-NOTES.md    
 NOTES.md
 NEXT_SESSION.md
+SESSION.md
+COMET_WORKFLOW.md
