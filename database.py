@@ -34,6 +34,23 @@ def init_db():
         )
     """)
 
+        # Lookup tables for corp/alliance names (for validation + autocomplete)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS corporations (
+            corp_id   INTEGER PRIMARY KEY,
+            corp_name TEXT NOT NULL,
+            ticker    TEXT DEFAULT ''
+        )
+    """)
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS alliances (
+            alliance_id   INTEGER PRIMARY KEY,
+            alliance_name TEXT NOT NULL,
+            ticker        TEXT DEFAULT ''
+        )
+    """)
+
     # Migration: add victim_alliance_id to databases that predate this column.
     # ALTER TABLE fails silently if the column already exists.
     try:
@@ -94,3 +111,70 @@ def get_kill_count():
     count = cursor.fetchone()[0]
     conn.close()
     return count
+
+def upsert_corporation(corp_id: int, corp_name: str, ticker: str = ""):
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("""
+        INSERT INTO corporations (corp_id, corp_name, ticker)
+        VALUES (?, ?, ?)
+        ON CONFLICT(corp_id) DO UPDATE SET
+            corp_name = excluded.corp_name,
+            ticker    = excluded.ticker
+    """, (corp_id, corp_name, ticker))
+    conn.commit()
+    conn.close()
+
+
+def upsert_alliance(alliance_id: int, alliance_name: str, ticker: str = ""):
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("""
+        INSERT INTO alliances (alliance_id, alliance_name, ticker)
+        VALUES (?, ?, ?)
+        ON CONFLICT(alliance_id) DO UPDATE SET
+            alliance_name = excluded.alliance_name,
+            ticker        = excluded.ticker
+    """, (alliance_id, alliance_name, ticker))
+    conn.commit()
+    conn.close()
+
+
+def get_missing_corp_ids(limit: int = 500) -> list[int]:
+    """
+    Corp IDs that appear in kills.victim_corp but are not yet in corporations.
+    victim_corp is stored as TEXT today, so we CAST it to INTEGER.
+    """
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT DISTINCT CAST(victim_corp AS INTEGER) AS corp_id
+        FROM kills
+        WHERE victim_corp IS NOT NULL
+          AND victim_corp != ''
+          AND CAST(victim_corp AS INTEGER) != 0
+          AND CAST(victim_corp AS INTEGER) NOT IN (SELECT corp_id FROM corporations)
+        LIMIT ?
+    """, (limit,))
+    rows = cursor.fetchall()
+    conn.close()
+    return [r[0] for r in rows if r[0] is not None]
+
+
+def get_missing_alliance_ids(limit: int = 500) -> list[int]:
+    """
+    Alliance IDs that appear in kills.victim_alliance_id but are not yet in alliances.
+    """
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT DISTINCT victim_alliance_id
+        FROM kills
+        WHERE victim_alliance_id IS NOT NULL
+          AND victim_alliance_id != 0
+          AND victim_alliance_id NOT IN (SELECT alliance_id FROM alliances)
+        LIMIT ?
+    """, (limit,))
+    rows = cursor.fetchall()
+    conn.close()
+    return [r[0] for r in rows if r[0] is not None]
