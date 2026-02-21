@@ -8,8 +8,10 @@ from stats import (
     get_kills_against_character,
     get_kills_against_corp,
     get_kills_against_alliance,
+    search_character_victims,
+    search_corporations,
+    search_alliances,
 )
-from zkillboard import resolve_entity_name
 
 
 def register_commands(bot):
@@ -32,7 +34,6 @@ def register_commands(bot):
         description="Show the top 10 Black Rabbits pilots by final blows."
     )
     async def top10(interaction: discord.Interaction):
-        # Defer response so Discord doesn't time out while we query the DB
         await interaction.response.defer()
 
         ytd   = get_year_to_date_top10()
@@ -120,37 +121,60 @@ def register_commands(bot):
 
         await interaction.response.send_message(embed=embed)
 
+    async def target_autocomplete(
+        interaction: discord.Interaction,
+        current: str,
+    ) -> list[app_commands.Choice[str]]:
+        choices = []
+
+        # Characters — encoded as "char:Name"
+        for r in search_character_victims(current):
+            label = f"Pilot: {r['name']} ({r['count']} kills)"
+            value = f"char:{r['name']}"
+            choices.append(app_commands.Choice(name=label[:100], value=value[:100]))
+
+        # Corporations — encoded as "corp:ID"
+        for r in search_corporations(current):
+            label = f"Corp: {r['name']} [{r['ticker']}]"
+            value = f"corp:{r['id']}"
+            choices.append(app_commands.Choice(name=label[:100], value=value[:100]))
+
+        # Alliances — encoded as "ally:ID"
+        for r in search_alliances(current):
+            label = f"Alliance: {r['name']} [{r['ticker']}]"
+            value = f"ally:{r['id']}"
+            choices.append(app_commands.Choice(name=label[:100], value=value[:100]))
+
+        return choices[:25]
+
     @bot.tree.command(
         name="killsagainst",
-        description="Top 10 Black Rabbits pilots who killed a specific pilot, corp, or alliance."
+        description="Pilot name (autocomplete), or type an exact corp/alliance name."
     )
-    @app_commands.describe(target="Pilot name, corporation name, or alliance name to look up")
+    @app_commands.describe(target="Start typing a pilot, corp, or alliance name")
+    @app_commands.autocomplete(target=target_autocomplete)
     async def killsagainst(interaction: discord.Interaction, target: str):
         await interaction.response.defer()
 
-        # Try to resolve the name to a known EVE entity type via ESI.
-        # ESI /universe/ids/ requires an exact name match.
-        entity = await resolve_entity_name(target)
+        if target.startswith("char:"):
+            name = target[5:]
+            results = get_kills_against_character(name)
+            entity_label = f"**{name}**"
 
-        if entity is None:
-            # ESI couldn't resolve the name — fall back to a fuzzy character name search.
+        elif target.startswith("corp:"):
+            corp_id = int(target[5:])
+            results = get_kills_against_corp(corp_id)
+            entity_label = f"**{target[5:]}** (corporation)"
+
+        elif target.startswith("ally:"):
+            alliance_id = int(target[5:])
+            results = get_kills_against_alliance(alliance_id)
+            entity_label = f"**{target[5:]}** (alliance)"
+
+        else:
+            # Free-text fallback — fuzzy character name search
             results = get_kills_against_character(target)
             entity_label = f'pilot matching "{target}"'
-        else:
-            entity_type, entity_id = entity
-            if entity_type == "character":
-                # We store victim_name as text, so search by name string.
-                results = get_kills_against_character(target)
-                entity_label = f"**{target}**"
-            elif entity_type == "corporation":
-                results = get_kills_against_corp(entity_id)
-                entity_label = f"**{target}** (corporation)"
-            elif entity_type == "alliance":
-                results = get_kills_against_alliance(entity_id)
-                entity_label = f"**{target}** (alliance)"
-            else:
-                results = get_kills_against_character(target)
-                entity_label = f'"{target}"'
 
         embed = discord.Embed(
             title=f"Kills Against \u2014 {target}",
