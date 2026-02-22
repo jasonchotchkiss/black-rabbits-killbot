@@ -154,6 +154,16 @@ def extract_kill_data(zkb_entry: dict, esi_killmail: dict) -> dict | None:
         "zkb_url":            f"https://zkillboard.com/kill/{kill_id}/",
         "zkb_hash":           zkb_entry.get("zkb", {}).get("hash", ""),
         "is_solo":            1 if zkb_entry.get("zkb", {}).get("solo", False) else 0,
+        "attackers":          [
+            {
+                "character_id":   a.get("character_id", 0),
+                "character_name": a.get("character_name", "Unknown Pilot"),
+                "damage_done":    a.get("damage_done", 0),
+                "is_final_blow":  1 if a.get("final_blow") else 0,
+            }
+            for a in attackers
+            if a.get("character_id")  # skip NPC-only attackers with no character_id
+        ],
     }
 
 
