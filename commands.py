@@ -361,8 +361,8 @@ def register_commands(bot):
               for entry in results:
                   medal = medals.get(entry["rank"], f"`#{entry['rank']}`")
                   lines.append(
-                      f"{medal} **{entry['pilot_name']}** \u2014 "
-                      f"{entry['kills']}K / {entry['deaths']}D  `{entry['kd']:.2f}`"
+                  f"{medal} **{entry['pilot_name']}** \u2014 "
+                  f"{entry['kills']}/{entry['deaths']} K:D  `{entry['kd']:.2f}`"
                   )
               return "\n".join(lines)
 

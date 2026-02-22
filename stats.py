@@ -182,7 +182,6 @@ def _query_top10_deaths(start_iso: str, end_iso: str) -> list[dict]:
           AND is_solo = 1
           AND victim_name IS NOT NULL
           AND victim_name != ''
-          AND victim_name != 'Unknown'
         GROUP BY victim_name
         ORDER BY death_count DESC
         LIMIT 10
@@ -354,13 +353,13 @@ def _query_kills_against(where_clause: str, params: tuple) -> list[dict]:
     return results
 
 
-def format_top10_embed_text(title: str, results: list[dict]) -> str:
+def format_top10_embed_text(title: str, results: list[dict], label: str = "final blow") -> str:
     """
     Formats a top 10 list into a clean text block for Discord.
-    We'll use this in the embed message later.
+    Pass label='death' for the solo deaths leaderboard.
     """
     if not results:
-        return "No kills recorded for this period."
+        return f"No {label}s recorded for this period."
 
     lines = []
     medals = {1: "\U0001f947", 2: "\U0001f948", 3: "\U0001f949"}
@@ -370,7 +369,7 @@ def format_top10_embed_text(title: str, results: list[dict]) -> str:
         name   = entry["pilot_name"]
         kills  = entry["kills"]
         medal  = medals.get(rank, f"`#{rank}`")
-        lines.append(f"{medal} **{name}** \u2014 {kills} final blow{'s' if kills != 1 else ''}")
+        lines.append(f"{medal} **{name}** \u2014 {kills} {label}{'s' if kills != 1 else ''}")
 
     return "\n".join(lines)
 
