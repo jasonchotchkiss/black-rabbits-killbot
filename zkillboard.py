@@ -34,7 +34,26 @@ async def fetch_zkill_page(session: aiohttp.ClientSession, page: int = 1) -> lis
         else:
             print(f"zKillboard error: HTTP {response.status} on page {page}")
             return []
+        
+async def fetch_zkill_losses_page(session: aiohttp.ClientSession, page: int = 1) -> list:
+    """
+    Fetch one page of loss references from zKillboard.
+    Returns a list of dicts, each containing killmail_id and zkb metadata.
+    Each page returns up to 200 entries.
+    """
+    url = f"{ZKILL_BASE}/losses/allianceID/{ALLIANCE_ID}/page/{page}/"
+    headers = {
+        "User-Agent": USER_AGENT,
+        "Accept-Encoding": "gzip"
+    }
 
+    async with session.get(url, headers=headers) as response:
+        if response.status == 200:
+            data = await response.json(content_type=None)
+            return data if data else []
+        else:
+            print(f"zKillboard error: HTTP {response.status} on losses page {page}")
+            return []
 
 async def fetch_esi_killmail(
     session: aiohttp.ClientSession,
@@ -232,3 +251,65 @@ async def fetch_and_extract_kills(max_pages: int = 5) -> list:
 
     print(f"Done. Total kills fetched and extracted: {len(all_kills)}")
     return all_kills
+
+async def fetch_and_extract_losses(max_pages: int = 5) -> list:
+    """
+    Fetch loss references from zKillboard, then enrich each one with full
+    data from ESI. Same pattern as fetch_and_extract_kills() but hits the
+    losses endpoint and sets is_loss=1 on every kill dict returned.
+    """
+    all_losses = []
+
+    async with aiohttp.ClientSession() as session:
+        for page in range(1, max_pages + 1):
+            print(f"Fetching zKillboard losses page {page}...")
+            zkill_entries = await fetch_zkill_losses_page(session, page)
+
+            if not zkill_entries:
+                print(f"No more loss entries after page {page - 1}. Stopping.")
+                break
+
+            print(f"  Got {len(zkill_entries)} loss references. Fetching full details from ESI...")
+
+            for entry in zkill_entries:
+                kill_id = entry.get("killmail_id")
+                zkb     = entry.get("zkb", {})
+                khash   = zkb.get("hash")
+
+                if not kill_id or not khash:
+                    continue
+
+                esi_data = await fetch_esi_killmail(session, kill_id, khash)
+                if not esi_data:
+                    continue
+
+                clean = extract_kill_data(entry, esi_data)
+                if clean:
+                    clean["is_loss"] = 1  # Mark as a loss
+
+                    # Resolve final blow name if missing
+                    if clean["final_blow_name"] == "Unknown Pilot" and clean["final_blow_id"] != 0:
+                        clean["final_blow_name"] = await resolve_character_name(
+                            session, clean["final_blow_id"]
+                        )
+                        await asyncio.sleep(0.1)
+
+                    # Resolve victim name if missing
+                    victim_id = esi_data.get("victim", {}).get("character_id", 0)
+                    if clean["victim_name"] == "Unknown" and victim_id != 0:
+                        clean["victim_name"] = await resolve_character_name(
+                            session, victim_id
+                        )
+                        await asyncio.sleep(0.1)
+
+                    all_losses.append(clean)
+
+                await asyncio.sleep(0.2)
+
+            print(f"  Page {page} processed. Running total: {len(all_losses)} losses.")
+
+            if page < max_pages:
+                await asyncio.sleep(1)
+
+    print(f"Done. Total losses fetched and extracted: {len(all_losses)}")
+    return all_losses

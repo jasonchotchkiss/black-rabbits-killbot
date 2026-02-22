@@ -10,7 +10,7 @@ from apscheduler.triggers.cron import CronTrigger
 
 from database import init_db
 from commands import register_commands
-from sync import sync_kills
+from sync import sync_kills, sync_losses
 from stats import (
     get_year_to_date_top10,
     get_current_month_top10,
@@ -94,6 +94,7 @@ class BlackRabbitsBot(discord.Client):
 
         try:
             await sync_kills(max_pages=5)
+            await sync_losses(max_pages=5)
             print("[scheduler] Kill sync complete.")
         except Exception as e:
             print(f"[scheduler] Kill sync failed: {e}")
@@ -141,6 +142,7 @@ class BlackRabbitsBot(discord.Client):
         print(f"[scheduler] Background sync started at {datetime.now(timezone.utc).isoformat()}")
         try:
             await sync_kills(max_pages=3)
+            await sync_losses(max_pages=3)
             print("[scheduler] Background sync complete.")
         except Exception as e:
             print(f"[scheduler] Background sync failed: {e}")
