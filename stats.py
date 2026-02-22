@@ -160,8 +160,127 @@ def get_current_week_top10_solo() -> list[dict]:
     days_since_monday = now.weekday()
     monday = now - timedelta(days=days_since_monday)
     start = monday.replace(hour=0, minute=0, second=0, microsecond=0)
-    return _query_top10(start.isoformat(), now.isoformat(), is_solo=True)    
+    return _query_top10(start.isoformat(), now.isoformat(), is_solo=True) 
 
+def _query_top10_deaths(start_iso: str, end_iso: str) -> list[dict]:
+    """
+    Internal helper: queries the database for top 10 pilots
+    by solo death count (is_loss=1, is_solo=1) between start_iso and end_iso.
+    Uses victim_name as the pilot identifier.
+    """
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT
+            victim_name,
+            COUNT(*) as death_count
+        FROM kills
+        WHERE kill_time >= ?
+          AND kill_time <= ?
+          AND is_loss = 1
+          AND is_solo = 1
+          AND victim_name IS NOT NULL
+          AND victim_name != ''
+          AND victim_name != 'Unknown'
+        GROUP BY victim_name
+        ORDER BY death_count DESC
+        LIMIT 10
+    """, (start_iso, end_iso))
+
+    rows = cursor.fetchall()
+    conn.close()
+
+    results = []
+    for rank, (name, count) in enumerate(rows, start=1):
+        results.append({
+            "rank":       rank,
+            "pilot_name": name,
+            "kills":      count,
+        })
+
+    return results
+
+def get_year_to_date_top10_solo_deaths() -> list[dict]:
+    """Returns top 10 pilots by solo death count for the current calendar year."""
+    now = datetime.now(timezone.utc)
+    start = datetime(now.year, 1, 1, 0, 0, 0, tzinfo=timezone.utc)
+    return _query_top10_deaths(start.isoformat(), now.isoformat())
+
+
+def get_current_month_top10_solo_deaths() -> list[dict]:
+    """Returns top 10 pilots by solo death count for the current calendar month."""
+    now = datetime.now(timezone.utc)
+    start = datetime(now.year, now.month, 1, 0, 0, 0, tzinfo=timezone.utc)
+    return _query_top10_deaths(start.isoformat(), now.isoformat())
+
+
+def get_current_week_top10_solo_deaths() -> list[dict]:
+    """Returns top 10 pilots by solo death count for the current week (Mon–Sun UTC)."""
+    now = datetime.now(timezone.utc)
+    days_since_monday = now.weekday()
+    monday = now - timedelta(days=days_since_monday)
+    start = monday.replace(hour=0, minute=0, second=0, microsecond=0)
+    return _query_top10_deaths(start.isoformat(), now.isoformat())
+
+
+def get_top10_solo_kd(period: str = "ytd") -> list[dict]:
+    """
+    Returns top 10 pilots by solo K/D ratio for the given period.
+    KD = solo_kills / max(solo_deaths, 1)
+    Only includes pilots who appear in either the solo kills or solo deaths list.
+    """
+    now = datetime.now(timezone.utc)
+
+    if period == "ytd":
+        start = datetime(now.year, 1, 1, 0, 0, 0, tzinfo=timezone.utc)
+    elif period == "month":
+        start = datetime(now.year, now.month, 1, 0, 0, 0, tzinfo=timezone.utc)
+    elif period == "week":
+        days_since_monday = now.weekday()
+        monday = now - timedelta(days=days_since_monday)
+        start = monday.replace(hour=0, minute=0, second=0, microsecond=0)
+    else:
+        raise ValueError(f"Unknown period: {period}")
+
+    start_iso = start.isoformat()
+    end_iso   = now.isoformat()
+
+    kills_list  = _query_top10(start_iso, end_iso, is_solo=True)
+    deaths_list = _query_top10_deaths(start_iso, end_iso)
+
+    # Build dicts keyed by pilot name
+    kills_by_name  = {e["pilot_name"]: e["kills"] for e in kills_list}
+    deaths_by_name = {e["pilot_name"]: e["kills"] for e in deaths_list}
+
+    # Merge all pilot names from both lists
+    all_pilots = set(kills_by_name.keys()) | set(deaths_by_name.keys())
+
+    merged = []
+    for name in all_pilots:
+        k = kills_by_name.get(name, 0)
+        d = deaths_by_name.get(name, 0)
+        kd = k / max(d, 1)
+        merged.append({
+            "pilot_name": name,
+            "kills":      k,
+            "deaths":     d,
+            "kd":         round(kd, 2),
+        })
+
+    merged.sort(key=lambda x: x["kd"], reverse=True)
+
+    results = []
+    for rank, entry in enumerate(merged[:10], start=1):
+        results.append({
+            "rank":       rank,
+            "pilot_name": entry["pilot_name"],
+            "kills":      entry["kills"],
+            "deaths":     entry["deaths"],
+            "kd":         entry["kd"],
+        })
+
+    return results
 
 def get_kills_against_character(victim_name: str) -> list[dict]:
     """
