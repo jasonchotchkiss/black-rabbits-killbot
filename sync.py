@@ -1,6 +1,6 @@
 import asyncio
 from zkillboard import fetch_and_extract_kills
-from database import init_db, save_kill, get_kill_count
+from database import init_db, save_kill, save_attackers, get_kill_count
 from resolve_names import run_backfill
 
 
@@ -24,9 +24,11 @@ async def sync_kills(max_pages: int = 5):
         print("No kills returned from API. Nothing to save.")
         return
 
-    # Save each kill to the database
+    # Save each kill and its attackers to the database
     for kill in kills:
         save_kill(kill)
+        if kill.get("attackers"):
+            save_attackers(kill["kill_id"], kill["kill_time"], kill["attackers"])
 
     count_after = get_kill_count()
     new_kills   = count_after - count_before
