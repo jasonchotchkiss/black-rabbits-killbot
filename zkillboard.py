@@ -153,6 +153,7 @@ def extract_kill_data(zkb_entry: dict, esi_killmail: dict) -> dict | None:
         "solar_system_id":    esi_killmail.get("solar_system_id"),
         "zkb_url":            f"https://zkillboard.com/kill/{kill_id}/",
         "zkb_hash":           zkb_entry.get("zkb", {}).get("hash", ""),
+        "is_solo":            1 if zkb_entry.get("zkb", {}).get("solo", False) else 0,
     }
 
 
