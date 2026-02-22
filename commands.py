@@ -4,6 +4,9 @@ from stats import (
     get_year_to_date_top10,
     get_current_month_top10,
     get_current_week_top10,
+    get_year_to_date_top10_solo,
+    get_current_month_top10_solo,
+    get_current_week_top10_solo,
     format_top10_embed_text,
     get_kills_against_character,
     get_kills_against_corp,
@@ -66,6 +69,43 @@ def register_commands(bot):
         await interaction.followup.send(embed=embed)
 
     @bot.tree.command(
+          name="top10solo",
+          description="Show the top 10 Black Rabbits pilots by solo final blows."
+      )
+    async def top10solo(interaction: discord.Interaction):
+          await interaction.response.defer()
+
+          ytd   = get_year_to_date_top10_solo()
+          month = get_current_month_top10_solo()
+          week  = get_current_week_top10_solo()
+
+          embed = discord.Embed(
+              title="Black Rabbits \u2014 Top 10 Solo Kills",
+              color=discord.Color.red(),
+          )
+
+          embed.add_field(
+              name="Year to Date",
+              value=format_top10_embed_text("YTD", ytd),
+              inline=False,
+          )
+          embed.add_field(
+              name="Current Month",
+              value=format_top10_embed_text("Month", month),
+              inline=False,
+          )
+          embed.add_field(
+              name="Current Week (Mon\u2013Sun)",
+              value=format_top10_embed_text("Week", week),
+              inline=False,
+          )
+
+          embed.set_footer(text="Data sourced from zKillboard \u2022 Updates daily at EVE downtime (11:00 UTC)")
+
+          await interaction.followup.send(embed=embed)
+
+
+    @bot.tree.command(
         name="info",
         description="Learn about the Black Rabbits Killbot and how it works."
     )
@@ -109,7 +149,8 @@ def register_commands(bot):
         embed.add_field(
             name="Commands",
             value=(
-                "`/top10` \u2014 Show all three leaderboards\n"
+             "`/top10` \u2014 Show all three leaderboards\n"
+                "`/top10solo` \u2014 Show top 10 solo kill leaderboards\n"
                 "`/killsagainst <target>` \u2014 Top 10 BR pilots who killed a specific pilot, corp, or alliance\n"
                 "`/info` \u2014 Show this help message\n"
                 "`/ping` \u2014 Check if the bot is online"
