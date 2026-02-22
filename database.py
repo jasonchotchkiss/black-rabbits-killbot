@@ -273,3 +273,34 @@ def get_missing_alliance_ids(limit: int = 1000) -> list[int]:
     rows = cursor.fetchall()
     conn.close()
     return [r[0] for r in rows if r[0] is not None]
+
+def get_missing_character_ids(limit: int = 2000) -> list[int]:
+    """
+    Character IDs in attackers that still have 'Unknown Pilot' as their name.
+    """
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT DISTINCT character_id FROM attackers
+        WHERE character_name = 'Unknown Pilot'
+          AND character_id IS NOT NULL
+          AND character_id != 0
+        LIMIT ?
+    """, (limit,))
+    rows = cursor.fetchall()
+    conn.close()
+    return [r[0] for r in rows]
+
+def upsert_character_name(character_id: int, name: str):
+    """
+    Update the character_name for all attacker rows with a matching character_id
+    that still show 'Unknown Pilot'.
+    """
+    conn = get_connection()
+    conn.execute("""
+        UPDATE attackers SET character_name = ?
+        WHERE character_id = ? AND character_name = 'Unknown Pilot'
+    """, (name, character_id))
+    conn.commit()
+    conn.close()
+
