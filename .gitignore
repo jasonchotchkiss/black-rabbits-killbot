@@ -14,6 +14,10 @@ __pycache__/
 # Runtime data
 killboard.db
 
+# One-time backfill scripts
+backfill_solo.py
+backfill_kills.py
+
 # My Notes
 NOTES.md
 NEXT_SESSION.md
