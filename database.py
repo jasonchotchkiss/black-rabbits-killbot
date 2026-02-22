@@ -31,7 +31,8 @@ def init_db():
             victim_alliance_id  INTEGER DEFAULT 0,
             solar_system_id     INTEGER,
             zkb_url             TEXT,
-            zkb_hash            TEXT DEFAULT ''
+            zkb_hash            TEXT DEFAULT '',
+            is_solo             INTEGER DEFAULT 0
         )
     """)
 
@@ -67,6 +68,12 @@ def init_db():
         print("Migration applied: added zkb_hash column.")
     except sqlite3.OperationalError:
         pass  # Column already exists — safe to ignore
+    try:
+        cursor.execute("ALTER TABLE kills ADD COLUMN is_solo INTEGER DEFAULT 0")
+        conn.commit()
+        print("Migration applied: added is_solo column.")
+    except sqlite3.OperationalError:
+        pass  # Column already exists — safe to ignore
 
     conn.commit()
     conn.close()
@@ -93,7 +100,8 @@ def save_kill(kill_data: dict):
             victim_alliance_id,
             solar_system_id,
             zkb_url,
-            zkb_hash
+            zkb_hash,
+            is_solo       
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     """, (
         kill_data["kill_id"],
@@ -107,6 +115,7 @@ def save_kill(kill_data: dict):
         kill_data.get("solar_system_id"),
         kill_data.get("zkb_url"),
         kill_data.get("zkb_hash", ""),
+        kill_data.get("is_solo", 0),
     ))
 
     conn.commit()
