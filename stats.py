@@ -40,7 +40,7 @@ def get_current_week_top10() -> list[dict]:
     return _query_top10(start.isoformat(), now.isoformat())
 
 
-def _query_top10(start_iso: str, end_iso: str) -> list[dict]:
+def _query_top10(start_iso: str, end_iso: str, is_solo: bool = False) -> list[dict]:
     """
     Internal helper: queries the database for top 10 pilots
     by final blow count between start_iso and end_iso timestamps.
@@ -50,7 +50,9 @@ def _query_top10(start_iso: str, end_iso: str) -> list[dict]:
     conn = get_connection()
     cursor = conn.cursor()
 
-    cursor.execute("""
+    solo_filter = "AND is_solo = 1" if is_solo else ""
+
+    cursor.execute(f"""
         SELECT
             final_blow_name,
             final_blow_id,
@@ -59,6 +61,7 @@ def _query_top10(start_iso: str, end_iso: str) -> list[dict]:
         WHERE kill_time >= ?
           AND kill_time <= ?
           AND final_blow_id != 0
+          {solo_filter}
         GROUP BY final_blow_id, final_blow_name
         ORDER BY kill_count DESC
         LIMIT 10
@@ -78,6 +81,28 @@ def _query_top10(start_iso: str, end_iso: str) -> list[dict]:
         })
 
     return results
+
+def get_year_to_date_top10_solo() -> list[dict]:
+    """Returns top 10 pilots by solo final blow count for the current calendar year."""
+    now = datetime.now(timezone.utc)
+    start = datetime(now.year, 1, 1, 0, 0, 0, tzinfo=timezone.utc)
+    return _query_top10(start.isoformat(), now.isoformat(), is_solo=True)
+
+
+def get_current_month_top10_solo() -> list[dict]:
+    """Returns top 10 pilots by solo final blow count for the current calendar month."""
+    now = datetime.now(timezone.utc)
+    start = datetime(now.year, now.month, 1, 0, 0, 0, tzinfo=timezone.utc)
+    return _query_top10(start.isoformat(), now.isoformat(), is_solo=True)
+
+
+def get_current_week_top10_solo() -> list[dict]:
+    """Returns top 10 pilots by solo final blow count for the current week (Mon–Sun UTC)."""
+    now = datetime.now(timezone.utc)
+    days_since_monday = now.weekday()
+    monday = now - timedelta(days=days_since_monday)
+    start = monday.replace(hour=0, minute=0, second=0, microsecond=0)
+    return _query_top10(start.isoformat(), now.isoformat(), is_solo=True)    
 
 
 def get_kills_against_character(victim_name: str) -> list[dict]:
