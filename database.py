@@ -30,18 +30,17 @@ def init_db():
             victim_corp         TEXT,
             victim_alliance_id  INTEGER DEFAULT 0,
             solar_system_id     INTEGER,
-            zkb_url             TEXT
+            zkb_url             TEXT,
+            zkb_hash            TEXT DEFAULT ''
         )
     """)
 
-        # Lookup tables for corp/alliance names (for validation + autocomplete)
+    # Lookup tables for corp/alliance names (for validation + autocomplete)
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS corporations (
             corp_id   INTEGER PRIMARY KEY,
             corp_name TEXT NOT NULL,
             ticker    TEXT DEFAULT ''
-            zkb_url             TEXT,
-            zkb_hash            TEXT DEFAULT ''
         )
     """)
 
