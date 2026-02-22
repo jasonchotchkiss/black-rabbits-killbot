@@ -152,6 +152,7 @@ def extract_kill_data(zkb_entry: dict, esi_killmail: dict) -> dict | None:
         "victim_alliance_id": victim.get("alliance_id", 0),
         "solar_system_id":    esi_killmail.get("solar_system_id"),
         "zkb_url":            f"https://zkillboard.com/kill/{kill_id}/",
+        "zkb_hash":           zkb_entry.get("zkb", {}).get("hash", ""),
     }
 
 
@@ -192,12 +193,21 @@ async def fetch_and_extract_kills(max_pages: int = 5) -> list:
 
                 clean = extract_kill_data(entry, esi_data)
                 if clean:
-                    # Resolve character name if we only got an ID
+                    # Resolve final blow name if missing
                     if clean["final_blow_name"] == "Unknown Pilot" and clean["final_blow_id"] != 0:
                         clean["final_blow_name"] = await resolve_character_name(
                             session, clean["final_blow_id"]
                         )
                         await asyncio.sleep(0.1)
+
+                    # Resolve victim name if missing
+                    victim_id = esi_data.get("victim", {}).get("character_id", 0)
+                    if clean["victim_name"] == "Unknown" and victim_id != 0:
+                        clean["victim_name"] = await resolve_character_name(
+                            session, victim_id
+                        )
+                        await asyncio.sleep(0.1)
+
                     all_kills.append(clean)
 
                 # Be polite to ESI - small pause between each killmail fetch

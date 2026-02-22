@@ -40,6 +40,8 @@ def init_db():
             corp_id   INTEGER PRIMARY KEY,
             corp_name TEXT NOT NULL,
             ticker    TEXT DEFAULT ''
+            zkb_url             TEXT,
+            zkb_hash            TEXT DEFAULT ''
         )
     """)
 
@@ -57,6 +59,13 @@ def init_db():
         cursor.execute("ALTER TABLE kills ADD COLUMN victim_alliance_id INTEGER DEFAULT 0")
         conn.commit()
         print("Migration applied: added victim_alliance_id column.")
+    except sqlite3.OperationalError:
+        pass  # Column already exists — safe to ignore
+
+    try:
+        cursor.execute("ALTER TABLE kills ADD COLUMN zkb_hash TEXT DEFAULT ''")
+        conn.commit()
+        print("Migration applied: added zkb_hash column.")
     except sqlite3.OperationalError:
         pass  # Column already exists — safe to ignore
 
@@ -84,8 +93,9 @@ def save_kill(kill_data: dict):
             victim_corp,
             victim_alliance_id,
             solar_system_id,
-            zkb_url
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            zkb_url,
+            zkb_hash
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     """, (
         kill_data["kill_id"],
         kill_data["kill_time"],
@@ -97,6 +107,7 @@ def save_kill(kill_data: dict):
         kill_data.get("victim_alliance_id", 0),
         kill_data.get("solar_system_id"),
         kill_data.get("zkb_url"),
+        kill_data.get("zkb_hash", ""),
     ))
 
     conn.commit()
@@ -111,6 +122,35 @@ def get_kill_count():
     count = cursor.fetchone()[0]
     conn.close()
     return count
+
+def get_corporation_name(corp_id: int) -> str | None:
+    """
+    Return the corporation name for a given corp_id, or None if not found.
+    """
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+        "SELECT corp_name FROM corporations WHERE corp_id = ?",
+        (corp_id,),
+    )
+    row = cursor.fetchone()
+    conn.close()
+    return row[0] if row else None
+
+
+def get_alliance_name(alliance_id: int) -> str | None:
+    """
+    Return the alliance name for a given alliance_id, or None if not found.
+    """
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+        "SELECT alliance_name FROM alliances WHERE alliance_id = ?",
+        (alliance_id,),
+    )
+    row = cursor.fetchone()
+    conn.close()
+    return row[0] if row else None
 
 def upsert_corporation(corp_id: int, corp_name: str, ticker: str = ""):
     conn = get_connection()

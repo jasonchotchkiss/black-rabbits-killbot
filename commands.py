@@ -12,7 +12,7 @@ from stats import (
     search_corporations,
     search_alliances,
 )
-
+from database import get_corporation_name, get_alliance_name
 
 def register_commands(bot):
     """
@@ -157,29 +157,31 @@ def register_commands(bot):
         await interaction.response.defer()
 
         if target.startswith("char:"):
-            name = target[5:]
-            results = get_kills_against_character(name)
-            entity_label = f"**{name}**"
+              name = target[5:]
+              results = get_kills_against_character(name)
+              entity_label = f"**{name}**"
 
         elif target.startswith("corp:"):
-            corp_id = int(target[5:])
-            results = get_kills_against_corp(corp_id)
-            entity_label = f"**{target[5:]}** (corporation)"
+              corp_id = int(target[5:])
+              results = get_kills_against_corp(corp_id)
+              corp_name = get_corporation_name(corp_id) or str(corp_id)
+              entity_label = f"**{corp_name}** (corporation)"
 
         elif target.startswith("ally:"):
-            alliance_id = int(target[5:])
-            results = get_kills_against_alliance(alliance_id)
-            entity_label = f"**{target[5:]}** (alliance)"
+              alliance_id = int(target[5:])
+              results = get_kills_against_alliance(alliance_id)
+              alliance_name = get_alliance_name(alliance_id) or str(alliance_id)
+              entity_label = f"**{alliance_name}** (alliance)"
 
         else:
-            # Free-text fallback — fuzzy character name search
-            results = get_kills_against_character(target)
-            entity_label = f'pilot matching "{target}"'
+              # Free-text fallback — fuzzy character name search
+              results = get_kills_against_character(target)
+              entity_label = f'pilot matching "{target}"'
 
         embed = discord.Embed(
-            title=f"Kills Against \u2014 {target}",
-            color=discord.Color.red(),
-        )
+              title=f"Kills Against — {entity_label}",
+              color=discord.Color.red(),
+          )
 
         if not results:
             embed.description = f"No kills found against {entity_label}."
@@ -197,7 +199,7 @@ def register_commands(bot):
                 name=f"Top BR Pilots vs {entity_label}",
                 value="\n".join(lines),
                 inline=False,
-            )
+         )
 
         embed.set_footer(text="Data sourced from zKillboard")
         await interaction.followup.send(embed=embed)
