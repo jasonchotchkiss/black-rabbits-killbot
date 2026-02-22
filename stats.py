@@ -82,6 +82,64 @@ def _query_top10(start_iso: str, end_iso: str, is_solo: bool = False) -> list[di
 
     return results
 
+def get_top_damage_dealers(period: str = "ytd") -> list[dict]:
+    """
+    Returns top 10 pilots by total damage done across all kills
+    for the given period: 'ytd', 'month', or 'week'.
+    """
+    now = datetime.now(timezone.utc)
+
+    if period == "ytd":
+        start = datetime(now.year, 1, 1, 0, 0, 0, tzinfo=timezone.utc)
+    elif period == "month":
+        start = datetime(now.year, now.month, 1, 0, 0, 0, tzinfo=timezone.utc)
+    elif period == "week":
+        days_since_monday = now.weekday()
+        monday = now - timedelta(days=days_since_monday)
+        start = monday.replace(hour=0, minute=0, second=0, microsecond=0)
+    else:
+        raise ValueError(f"Unknown period: {period}")
+
+    return _query_top_damage(start.isoformat(), now.isoformat())
+
+
+def _query_top_damage(start_iso: str, end_iso: str) -> list[dict]:
+    """
+    Internal helper: queries the attackers table for top 10 pilots
+    by total damage done between start_iso and end_iso timestamps.
+    """
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT
+            character_name,
+            character_id,
+            SUM(damage_done) as total_damage
+        FROM attackers
+        WHERE kill_timestamp >= ?
+          AND kill_timestamp <= ?
+          AND character_id != 0
+        GROUP BY character_id, character_name
+        ORDER BY total_damage DESC
+        LIMIT 10
+    """, (start_iso, end_iso))
+
+    rows = cursor.fetchall()
+    conn.close()
+
+    results = []
+    for rank, (name, char_id, damage) in enumerate(rows, start=1):
+        results.append({
+            "rank":       rank,
+            "pilot_name": name,
+            "char_id":    char_id,
+            "damage":     damage,
+            "zkb_url":    f"https://zkillboard.com/character/{char_id}/",
+        })
+
+    return results
+
 def get_year_to_date_top10_solo() -> list[dict]:
     """Returns top 10 pilots by solo final blow count for the current calendar year."""
     now = datetime.now(timezone.utc)
