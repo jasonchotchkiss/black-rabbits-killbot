@@ -17,6 +17,7 @@ killboard.db
 # One-time backfill scripts
 backfill_solo.py
 backfill_kills.py
+backfill_attackers.py
 
 # My Notes
 NOTES.md
