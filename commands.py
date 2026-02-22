@@ -11,6 +11,7 @@ from stats import (
     get_kills_against_character,
     get_kills_against_corp,
     get_kills_against_alliance,
+    get_top_damage_dealers,
     search_character_victims,
     search_corporations,
     search_alliances,
@@ -104,6 +105,53 @@ def register_commands(bot):
 
           await interaction.followup.send(embed=embed)
 
+    @bot.tree.command(
+          name="topdamage",
+          description="Show the top 10 Black Rabbits pilots by total damage dealt."
+      )
+    async def topdamage(interaction: discord.Interaction):
+          await interaction.response.defer()
+
+          ytd   = get_top_damage_dealers("ytd")
+          month = get_top_damage_dealers("month")
+          week  = get_top_damage_dealers("week")
+
+          embed = discord.Embed(
+              title="Black Rabbits \u2014 Top 10 Damage Dealers",
+              color=discord.Color.red(),
+          )
+
+          def format_damage_text(results):
+              if not results:
+                  return "No damage recorded for this period."
+              medals = {1: "\U0001f947", 2: "\U0001f948", 3: "\U0001f949"}
+              lines = []
+              for entry in results:
+                  medal = medals.get(entry["rank"], f"`#{entry['rank']}`")
+                  lines.append(
+                      f"{medal} **{entry['pilot_name']}** \u2014 {entry['damage']:,} damage"
+                  )
+              return "\n".join(lines)
+
+          embed.add_field(
+              name="Year to Date",
+              value=format_damage_text(ytd),
+              inline=False,
+          )
+          embed.add_field(
+              name="Current Month",
+              value=format_damage_text(month),
+              inline=False,
+          )
+          embed.add_field(
+              name="Current Week (Mon\u2013Sun)",
+              value=format_damage_text(week),
+              inline=False,
+          )
+
+          embed.set_footer(text="Data sourced from zKillboard \u2022 Updates daily at EVE downtime (11:00 UTC)")
+
+          await interaction.followup.send(embed=embed)
 
     @bot.tree.command(
         name="info",
@@ -151,6 +199,7 @@ def register_commands(bot):
             value=(
              "`/top10` \u2014 Show all three leaderboards\n"
                 "`/top10solo` \u2014 Show top 10 solo kill leaderboards\n"
+                "`/topdamage` \u2014 Show top 10 pilots by total damage dealt\n"
                 "`/killsagainst <target>` \u2014 Top 10 BR pilots who killed a specific pilot, corp, or alliance\n"
                 "`/info` \u2014 Show this help message\n"
                 "`/ping` \u2014 Check if the bot is online"
