@@ -179,7 +179,7 @@ def register_commands(bot):
               entity_label = f'pilot matching "{target}"'
 
         embed = discord.Embed(
-              title=f"Kills Against — {entity_label}",
+              title=f"Kills Against \u2014 {entity_label} (all time)",
               color=discord.Color.red(),
           )
 
