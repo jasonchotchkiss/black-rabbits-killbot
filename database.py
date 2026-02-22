@@ -53,6 +53,20 @@ def init_db():
         )
     """)
 
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS attackers (
+            id              INTEGER PRIMARY KEY AUTOINCREMENT,
+            kill_id         INTEGER NOT NULL,
+            character_id    INTEGER NOT NULL,
+            character_name  TEXT NOT NULL,
+            damage_done     INTEGER DEFAULT 0,
+            is_final_blow   INTEGER DEFAULT 0,
+            kill_timestamp  TEXT NOT NULL,
+            UNIQUE (kill_id, character_id),
+            FOREIGN KEY (kill_id) REFERENCES kills(kill_id)
+        )
+    """)
+
     # Migration: add victim_alliance_id to databases that predate this column.
     # ALTER TABLE fails silently if the column already exists.
     try:
@@ -102,7 +116,7 @@ def save_kill(kill_data: dict):
             zkb_url,
             zkb_hash,
             is_solo       
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     """, (
         kill_data["kill_id"],
         kill_data["kill_time"],
@@ -118,6 +132,39 @@ def save_kill(kill_data: dict):
         kill_data.get("is_solo", 0),
     ))
 
+    conn.commit()
+    conn.close()
+
+def save_attackers(kill_id: int, kill_timestamp: str, attackers: list[dict]):
+    """
+    Insert attacker rows for a given kill.
+    Skips attackers with no character_id (NPCs).
+    Safe to call multiple times — uses INSERT OR IGNORE.
+    """
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    for a in attackers:
+        character_id = a.get("character_id", 0)
+        if not character_id:
+            continue
+        cursor.execute("""
+            INSERT OR IGNORE INTO attackers (
+                kill_id,
+                character_id,
+                character_name,
+                damage_done,
+                is_final_blow,
+                kill_timestamp
+            ) VALUES (?, ?, ?, ?, ?, ?)
+        """, (
+            kill_id,
+            character_id,
+            a.get("character_name", "Unknown Pilot"),
+            a.get("damage_done", 0),
+            a.get("is_final_blow", 0),
+            kill_timestamp,
+        ))
     conn.commit()
     conn.close()
 
