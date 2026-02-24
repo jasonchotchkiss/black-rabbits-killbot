@@ -51,6 +51,7 @@ def _query_top10(start_iso: str, end_iso: str, is_solo: bool = False) -> list[di
     cursor = conn.cursor()
 
     solo_filter = "AND is_solo = 1" if is_solo else ""
+    unknown_filter = "AND final_blow_name != 'Unknown Pilot'" if is_solo else ""
 
     cursor.execute(f"""
         SELECT
@@ -60,8 +61,9 @@ def _query_top10(start_iso: str, end_iso: str, is_solo: bool = False) -> list[di
         FROM kills
         WHERE kill_time >= ?
           AND kill_time <= ?
-          AND final_blow_id != 0
-          {solo_filter}
+         AND final_blow_id != 0
+           {solo_filter}
+           {unknown_filter}
         GROUP BY final_blow_id, final_blow_name
         ORDER BY kill_count DESC
         LIMIT 10
