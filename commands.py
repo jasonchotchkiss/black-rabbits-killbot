@@ -205,19 +205,17 @@ def register_commands(bot):
         embed.add_field(
             name="Commands",
             value=(
-                "`/top10` \\u2014 Show all three leaderboards\\n"
-                "`/top10solo` \\u2014 Show top 10 solo kill leaderboards\\n"
-                "`/top10solodeaths` \\u2014 Show top 10 solo death leaderboards\\n"
-                "`/top10solokd` \\u2014 Show top 10 solo K/D ratio leaderboards\\n"
-                "`/topdamage` \\u2014 Show top 10 pilots by total damage dealt\\n"
-                "`/top10allkills` \\u2014 Show top 10 pilots by total kill participation\\n"
-                "`/killsagainst <target>` \\u2014 Top 10 BR pilots who killed a specific pilot, corp, or alliance\\n"
-                "`/mystats <pilot>` \\u2014 See your personal kill stats (only visible to you)\\n"
-                "`/info` \\u2014 Show this help message\\n"
-                "`/ping` \\u2014 Check if the bot is online"
-
+                "`/top10` \u2014 Show all three leaderboards\n"
+                "`/top10solo` \u2014 Show top 10 solo kill leaderboards\n"
+                "`/top10solodeaths` \u2014 Show top 10 solo death leaderboards\n"
+                "`/top10solokd` \u2014 Show top 10 solo K/D ratio leaderboards\n"
+                "`/topdamage` \u2014 Show top 10 pilots by total damage dealt\n"
+                "`/top10allkills` \u2014 Show top 10 pilots by total kill participation\n"
+                "`/killsagainst <target>` \u2014 Top 10 BR pilots who killed a specific pilot, corp, or alliance\n"
+                "`/mystats <pilot>` \u2014 See your personal kill stats (only visible to you)\n"
+                "`/info` \u2014 Show this help message\n"
+                "`/ping` \u2014 Check if the bot is online"
             ),
-
             inline=False,
         )
 
