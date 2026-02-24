@@ -517,3 +517,122 @@ def _query_top10_all_kills(start_iso: str, end_iso: str) -> list[dict]:
         })
 
     return results
+
+def search_all_pilots(partial: str) -> list[dict]:
+    """
+    Returns up to 25 distinct pilot names from the attackers table
+    that contain the partial string (case-insensitive).
+    Ordered by total kill count (most active first).
+    Used for /mystats autocomplete.
+    """
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT
+            character_name,
+            character_id,
+            COUNT(DISTINCT kill_id) as kill_count
+        FROM attackers
+        WHERE character_name LIKE ?
+          AND character_id != 0
+          AND character_name IS NOT NULL
+          AND character_name != ''
+          AND character_name != 'Unknown Pilot'
+        GROUP BY character_id, character_name
+        ORDER BY kill_count DESC
+        LIMIT 25
+    """, (f"%{partial}%",))
+
+    rows = cursor.fetchall()
+    conn.close()
+
+    return [
+        {"name": row[0], "char_id": row[1], "count": row[2]}
+        for row in rows
+    ]
+
+
+def get_pilot_stats(character_name: str, character_id: int, period: str) -> dict:
+    """
+    Returns personal stats for a single pilot for the given period.
+    period: 'ytd', 'month', or 'week'
+
+    Returns a dict with:
+      - kill_participation: distinct kills the pilot appeared on as any attacker
+      - final_blows:        kills where this pilot had the final blow
+      - solo_kills:         solo kills where this pilot had the final blow
+      - solo_losses:        solo losses where this pilot was the victim
+    """
+    now = datetime.now(timezone.utc)
+
+    if period == "ytd":
+        start = datetime(now.year, 1, 1, 0, 0, 0, tzinfo=timezone.utc)
+    elif period == "month":
+        start = datetime(now.year, now.month, 1, 0, 0, 0, tzinfo=timezone.utc)
+    elif period == "week":
+        days_since_monday = now.weekday()
+        monday = now - timedelta(days=days_since_monday)
+        start = monday.replace(hour=0, minute=0, second=0, microsecond=0)
+    else:
+        raise ValueError(f"Unknown period: {period}")
+
+    start_iso = start.isoformat()
+    end_iso   = now.isoformat()
+
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    # Kill participation — any role on the kill (from attackers table)
+    cursor.execute("""
+        SELECT COUNT(DISTINCT kill_id)
+        FROM attackers
+        WHERE character_id = ?
+          AND kill_timestamp >= ?
+          AND kill_timestamp <= ?
+    """, (character_id, start_iso, end_iso))
+    kill_participation = cursor.fetchone()[0] or 0
+
+    # Final blows — this pilot delivered the killing shot (kills only, not losses)
+    cursor.execute("""
+        SELECT COUNT(*)
+        FROM kills
+        WHERE final_blow_id = ?
+          AND kill_time >= ?
+          AND kill_time <= ?
+          AND is_loss = 0
+    """, (character_id, start_iso, end_iso))
+    final_blows = cursor.fetchone()[0] or 0
+
+    # Solo kills — solo final blows (kills only)
+    cursor.execute("""
+        SELECT COUNT(*)
+        FROM kills
+        WHERE final_blow_id = ?
+          AND kill_time >= ?
+          AND kill_time <= ?
+          AND is_solo = 1
+          AND is_loss = 0
+    """, (character_id, start_iso, end_iso))
+    solo_kills = cursor.fetchone()[0] or 0
+
+    # Solo losses — this pilot was the victim on a solo loss
+    cursor.execute("""
+        SELECT COUNT(*)
+        FROM kills
+        WHERE victim_name = ?
+          AND kill_time >= ?
+          AND kill_time <= ?
+          AND is_loss = 1
+          AND is_solo = 1
+    """, (character_name, start_iso, end_iso))
+    solo_losses = cursor.fetchone()[0] or 0
+
+    conn.close()
+
+    return {
+        "kill_participation": kill_participation,
+        "final_blows":        final_blows,
+        "solo_kills":         solo_kills,
+        "solo_losses":        solo_losses,
+    }
