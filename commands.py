@@ -472,10 +472,10 @@ def register_commands(bot):
 
         def format_stats(s: dict) -> str:
             return (
-                f"Kill Participation: **{s['kill_participation']}**\n"
-                f"Final Blows: **{s['final_blows']}**\n"
-                f"Solo Kills: **{s['solo_kills']}**\n"
-                f"Solo Losses: **{s['solo_losses']}**"
+                f"\u2694\ufe0f Kill Participation: **{s['kill_participation']}**\n"
+                f"\U0001f3af Final Blows: **{s['final_blows']}**\n"
+                f"\U0001f5e1\ufe0f Solo Kills: **{s['solo_kills']}**\n"
+                f"\U0001f480 Solo Losses: **{s['solo_losses']}**"
             )
 
         embed = discord.Embed(
