@@ -19,6 +19,7 @@ from stats import (
     search_character_victims,
     search_corporations,
     search_alliances,
+    get_top10_all_kills,
 )
 from database import get_corporation_name, get_alliance_name
 
@@ -206,6 +207,7 @@ def register_commands(bot):
                 "`/top10solodeaths` \u2014 Show top 10 solo death leaderboards\n"
                 "`/top10solokd` \u2014 Show top 10 solo K/D ratio leaderboards\n"
                 "`/topdamage` \u2014 Show top 10 pilots by total damage dealt\n"
+                "`/top10allkills` \u2014 Show top 10 pilots by total kill participation\n"
                 "`/killsagainst <target>` \u2014 Top 10 BR pilots who killed a specific pilot, corp, or alliance\n"
                 "`/info` \u2014 Show this help message\n"
                 "`/ping` \u2014 Check if the bot is online"
@@ -388,5 +390,40 @@ def register_commands(bot):
 
           await interaction.followup.send(embed=embed)
 
+    @bot.tree.command(
+            name="top10allkills",
+            description="Show the top 10 Black Rabbits pilots by total kill participation."
+        )
+    async def top10allkills(interaction: discord.Interaction):
+            await interaction.response.defer()
+
+            ytd   = get_top10_all_kills("ytd")
+            month = get_top10_all_kills("month")
+            week  = get_top10_all_kills("week")
+
+            embed = discord.Embed(
+                title="Black Rabbits \u2014 Top 10 Kill Participation",
+                color=discord.Color.red(),
+            )
+
+            embed.add_field(
+                name="Year to Date",
+                value=format_top10_embed_text("YTD", ytd, label="kill"),
+                inline=False,
+            )
+            embed.add_field(
+                name="Current Month",
+                value=format_top10_embed_text("Month", month, label="kill"),
+                inline=False,
+            )
+            embed.add_field(
+                name="Current Week (Mon\u2013Sun)",
+                value=format_top10_embed_text("Week", week, label="kill"),
+                inline=False,
+            )
+
+            embed.set_footer(text="Data sourced from zKillboard \u2022 Updates daily at EVE downtime (11:00 UTC)")
+
+            await interaction.followup.send(embed=embed)
 
         
