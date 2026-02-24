@@ -91,17 +91,17 @@ def register_commands(bot):
 
           embed.add_field(
               name="Year to Date",
-              value=format_top10_embed_text("YTD", ytd),
+              value=format_top10_embed_text("YTD", ytd, label="solo kill"),
               inline=False,
           )
           embed.add_field(
               name="Current Month",
-              value=format_top10_embed_text("Month", month),
+              value=format_top10_embed_text("Month", month, label="solo kill"),
               inline=False,
           )
           embed.add_field(
               name="Current Week (Mon\u2013Sun)",
-              value=format_top10_embed_text("Week", week),
+              value=format_top10_embed_text("Week", week, label="solo kill"),
               inline=False,
           )
 
@@ -299,8 +299,10 @@ def register_commands(bot):
          )
 
         embed.set_footer(text="Data sourced from zKillboard")
-    
-    
+
+        await interaction.followup.send(embed=embed)
+
+
     @bot.tree.command(
           name="top10solodeaths",
           description="Show the top 10 Black Rabbits pilots by solo deaths."
