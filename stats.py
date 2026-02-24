@@ -457,3 +457,63 @@ def search_alliances(partial: str) -> list[dict]:
         {"id": row[0], "name": row[1], "ticker": row[2], "type": "alliance"}
         for row in rows
     ]
+
+def get_top10_all_kills(period: str = "ytd") -> list[dict]:
+    """
+    Returns top 10 pilots by total kill participation (any attacker role)
+    for the given period: 'ytd', 'month', or 'week'.
+    """
+    now = datetime.now(timezone.utc)
+
+    if period == "ytd":
+        start = datetime(now.year, 1, 1, 0, 0, 0, tzinfo=timezone.utc)
+    elif period == "month":
+        start = datetime(now.year, now.month, 1, 0, 0, 0, tzinfo=timezone.utc)
+    elif period == "week":
+        days_since_monday = now.weekday()
+        monday = now - timedelta(days=days_since_monday)
+        start = monday.replace(hour=0, minute=0, second=0, microsecond=0)
+    else:
+        raise ValueError(f"Unknown period: {period}")
+
+    return _query_top10_all_kills(start.isoformat(), now.isoformat())
+
+def _query_top10_all_kills(start_iso: str, end_iso: str) -> list[dict]:
+    """
+    Internal helper: queries the attackers table for top 10 pilots
+    by distinct kill participation between start_iso and end_iso.
+    """
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT
+            character_name,
+            character_id,
+            COUNT(DISTINCT kill_id) as kill_count
+        FROM attackers
+        WHERE kill_timestamp >= ?
+          AND kill_timestamp <= ?
+          AND character_id != 0
+          AND character_name IS NOT NULL
+          AND character_name != ''
+          AND character_name != 'Unknown Pilot'
+        GROUP BY character_id, character_name
+        ORDER BY kill_count DESC
+        LIMIT 10
+    """, (start_iso, end_iso))
+
+    rows = cursor.fetchall()
+    conn.close()
+
+    results = []
+    for rank, (name, char_id, count) in enumerate(rows, start=1):
+        results.append({
+            "rank":       rank,
+            "pilot_name": name,
+            "char_id":    char_id,
+            "kills":      count,
+            "zkb_url":    f"https://zkillboard.com/character/{char_id}/",
+        })
+
+    return results
