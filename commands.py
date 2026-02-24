@@ -208,6 +208,7 @@ def register_commands(bot):
                 "`/top10solokd` \u2014 Show top 10 solo K/D ratio leaderboards\n"
                 "`/topdamage` \u2014 Show top 10 pilots by total damage dealt\n"
                 "`/top10allkills` \u2014 Show top 10 pilots by total kill participation\n"
+                "`/mystats <pilot>` \u2014 Your personal kill stats card (only you can see it)\n"
                 "`/killsagainst <target>` \u2014 Top 10 BR pilots who killed a specific pilot, corp, or alliance\n"
                 "`/info` \u2014 Show this help message\n"
                 "`/ping` \u2014 Check if the bot is online"
@@ -425,5 +426,79 @@ def register_commands(bot):
             embed.set_footer(text="Data sourced from zKillboard \u2022 Updates daily at EVE downtime (11:00 UTC)")
 
             await interaction.followup.send(embed=embed)
+
+    async def pilot_autocomplete(
+        interaction: discord.Interaction,
+        current: str,
+    ) -> list[app_commands.Choice[str]]:
+        choices = []
+        for r in search_all_pilots(current):
+            label = f"{r['name']} ({r['count']} kills)"
+            value = f"{r['char_id']}:{r['name']}"
+            choices.append(app_commands.Choice(name=label[:100], value=value[:100]))
+        return choices[:25]
+
+    @bot.tree.command(
+        name="mystats",
+        description="See your personal kill stats. Only you can see the result."
+    )
+    @app_commands.describe(pilot="Start typing your pilot name")
+    @app_commands.autocomplete(pilot=pilot_autocomplete)
+    async def mystats(interaction: discord.Interaction, pilot: str):
+        await interaction.response.defer(ephemeral=True)
+
+        if ":" in pilot:
+            char_id_str, char_name = pilot.split(":", 1)
+            try:
+                char_id = int(char_id_str)
+            except ValueError:
+                await interaction.followup.send(
+                    "Could not parse pilot. Please select from the autocomplete list.",
+                    ephemeral=True
+                )
+                return
+        else:
+            await interaction.followup.send(
+                "Please select a pilot from the autocomplete list.",
+                ephemeral=True
+            )
+            return
+
+        ytd   = get_pilot_stats(char_name, char_id, "ytd")
+        month = get_pilot_stats(char_name, char_id, "month")
+        week  = get_pilot_stats(char_name, char_id, "week")
+
+        def format_stats(s: dict) -> str:
+            return (
+                f"Kill Participation: **{s['kill_participation']}**\n"
+                f"Final Blows: **{s['final_blows']}**\n"
+                f"Solo Kills: **{s['solo_kills']}**\n"
+                f"Solo Losses: **{s['solo_losses']}**"
+            )
+
+        embed = discord.Embed(
+            title=f"\U0001f4ca {char_name} \u2014 Personal Stats",
+            color=discord.Color.blue(),
+        )
+
+        embed.add_field(
+            name="Year to Date",
+            value=format_stats(ytd),
+            inline=False,
+        )
+        embed.add_field(
+            name="Current Month",
+            value=format_stats(month),
+            inline=False,
+        )
+        embed.add_field(
+            name="Current Week (Mon\u2013Sun)",
+            value=format_stats(week),
+            inline=False,
+        )
+
+        embed.set_footer(text="Only visible to you \u2022 Data sourced from zKillboard")
+
+        await interaction.followup.send(embed=embed, ephemeral=True)
 
         
