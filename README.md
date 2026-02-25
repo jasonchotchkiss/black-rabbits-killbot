@@ -89,11 +89,11 @@ sudo systemctl restart br-killbot
 
 ## Example Screenshots
 
-![Black Rabbits Killbot in action](https://github.com/jasonchotchkiss/black-rabbits-killbot/blob/main/br-killbot.png)
+![Black Rabbits Killbot in action](https://github.com/jasonchotchkiss/black-rabbits-killbot/blob/main/assets/br-killbot.png)
 
-![Black Rabbits Killbot in action](https://github.com/jasonchotchkiss/black-rabbits-killbot/blob/main/br-killbot2.png)
+![Black Rabbits Killbot in action](https://github.com/jasonchotchkiss/black-rabbits-killbot/blob/main/assets/br-killbot2.png)
 
-![Black Rabbits Killbot in action](https://github.com/jasonchotchkiss/black-rabbits-killbot/blob/main/br-killbot3.png)
+![Black Rabbits Killbot in action](https://github.com/jasonchotchkiss/black-rabbits-killbot/blob/main/assets/br-killbot3.png)
 
 
 
