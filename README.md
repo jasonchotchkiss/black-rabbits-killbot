@@ -45,6 +45,11 @@ A Discord bot for the **Black Rabbits** alliance in EVE Online that tracks kill 
 - After each sync: `resolve_names.py` resolves any new character, corp, and alliance names from ESI
 - Daily at 11:15 UTC: bot syncs, queries the DB, and posts the leaderboard embed to the configured channel
 
+## Prerequisites
+- Python 3.10 or higher
+- SQLite3
+- A Discord bot token
+
 ## Setup (Dev)
 
 1. Clone the repo
