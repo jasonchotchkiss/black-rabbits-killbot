@@ -50,6 +50,19 @@ A Discord bot for the **Black Rabbits** alliance in EVE Online that tracks kill 
 - SQLite3
 - A Discord bot token
 
+## Built With
+
+- [discord.py](https://discordpy.readthedocs.io/) — Discord bot framework
+- [zKillboard API](https://zkillboard.com/information/api/) — Kill/loss data source
+- [EVE ESI API](https://esi.evetech.net/) — Character and corporation name resolution
+- SQLite — Local database, no external DB required
+
+## Known Limitations
+
+- Data is scoped to a single EVE alliance — update `CORPORATION_ID` and `DISCORD_GUILD_ID` in `.env` to use with your own corp/alliance
+- Kill history only goes back as far as your initial sync
+- zKillboard API may occasionally be slow or unavailable — the bot handles this gracefully but data may lag
+
 ## Setup (Dev)
 
 1. Clone the repo
@@ -95,5 +108,8 @@ sudo systemctl restart br-killbot
 
 ![Black Rabbits Killbot in action](https://github.com/jasonchotchkiss/black-rabbits-killbot/blob/main/assets/br-killbot3.png)
 
+## Contributing
 
+This is a personal project built for the Black Rabbits alliance in EVE Online.  
+It is not actively maintained for general use, but feel free to fork it and adapt it for your own corp. PRs welcome!
 
