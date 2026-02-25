@@ -84,3 +84,11 @@ sudo systemctl restart br-killbot
 | DISCORD_GUILD_ID   | The Discord server (guild) ID                    |
 | DISCORD_CHANNEL_ID | Channel ID for daily automated leaderboard posts |
 
+## Example Screenshots
+
+![Black Rabbits Killbot in action](assets/br-killbot.png)
+
+![Black Rabbits Killbot in action](assets/br-killbot2.png)
+
+![Black Rabbits Killbot in action](assets/br-killbot3.png)
+
