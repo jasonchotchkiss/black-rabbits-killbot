@@ -64,6 +64,8 @@ A Discord bot for the **Black Rabbits** alliance in EVE Online that tracks kill 
 
 The bot runs as a systemd service (`br-killbot`) on Ubuntu pointing to `/opt/black-rabbits-killbot`.
 
+
+
 ```bash
 # Check status
 sudo systemctl status br-killbot
@@ -77,6 +79,7 @@ sudo journalctl -u br-killbot -n 50 --no-pager
 # Deploy a code update
 sudo git -C /opt/black-rabbits-killbot pull origin main
 sudo systemctl restart br-killbot
+```
 
 | Variable           | Description                                      |
 | ------------------ | ------------------------------------------------ |
@@ -91,4 +94,6 @@ sudo systemctl restart br-killbot
 ![Black Rabbits Killbot in action](assets/br-killbot2.png)
 
 ![Black Rabbits Killbot in action](assets/br-killbot3.png)
+
+
 
