@@ -113,3 +113,5 @@ sudo systemctl restart br-killbot
 This is a personal project built for the Black Rabbits alliance in EVE Online.  
 It is not actively maintained for general use, but feel free to fork it and adapt it for your own corp. PRs welcome!
 
+Built with the assistance of AI-guided development (Perplexity AI).
+
