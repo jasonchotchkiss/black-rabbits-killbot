@@ -45,6 +45,24 @@ A Discord bot for the **Black Rabbits** alliance in EVE Online that tracks kill 
 - After each sync: `resolve_names.py` resolves any new character, corp, and alliance names from ESI
 - Daily at 11:15 UTC: bot syncs, queries the DB, and posts the leaderboard embed to the configured channel
 
+## Prerequisites
+- Python 3.10 or higher
+- SQLite3
+- A Discord bot token
+
+## Built With
+
+- [discord.py](https://discordpy.readthedocs.io/) — Discord bot framework
+- [zKillboard API](https://zkillboard.com/information/api/) — Kill/loss data source
+- [EVE ESI API](https://esi.evetech.net/) — Character and corporation name resolution
+- SQLite — Local database, no external DB required
+
+## Known Limitations
+
+- Data is scoped to a single EVE alliance — update `CORPORATION_ID` and `DISCORD_GUILD_ID` in `.env` to use with your own corp/alliance
+- Kill history only goes back as far as your initial sync
+- zKillboard API may occasionally be slow or unavailable — the bot handles this gracefully but data may lag
+
 ## Setup (Dev)
 
 1. Clone the repo
@@ -59,6 +77,8 @@ A Discord bot for the **Black Rabbits** alliance in EVE Online that tracks kill 
 
 The bot runs as a systemd service (`br-killbot`) on Ubuntu pointing to `/opt/black-rabbits-killbot`.
 
+
+
 ```bash
 # Check status
 sudo systemctl status br-killbot
@@ -72,10 +92,26 @@ sudo journalctl -u br-killbot -n 50 --no-pager
 # Deploy a code update
 sudo git -C /opt/black-rabbits-killbot pull origin main
 sudo systemctl restart br-killbot
+```
 
 | Variable           | Description                                      |
 | ------------------ | ------------------------------------------------ |
 | DISCORD_TOKEN      | Your Discord bot token                           |
 | DISCORD_GUILD_ID   | The Discord server (guild) ID                    |
 | DISCORD_CHANNEL_ID | Channel ID for daily automated leaderboard posts |
+
+## Example Screenshots
+
+![Black Rabbits Killbot in action](https://github.com/jasonchotchkiss/black-rabbits-killbot/blob/main/assets/br-killbot.png)
+
+![Black Rabbits Killbot in action](https://github.com/jasonchotchkiss/black-rabbits-killbot/blob/main/assets/br-killbot2.png)
+
+![Black Rabbits Killbot in action](https://github.com/jasonchotchkiss/black-rabbits-killbot/blob/main/assets/br-killbot3.png)
+
+## Contributing
+
+This is a personal project built for the Black Rabbits alliance in EVE Online.  
+It is not actively maintained for general use, but feel free to fork it and adapt it for your own corp. PRs welcome!
+
+Built with the assistance of AI-guided development (Perplexity AI).
 
